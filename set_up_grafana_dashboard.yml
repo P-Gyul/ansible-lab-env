@@ -1,0 +1,259 @@
+---
+# Playbook: Set up Grafana dashboard and provisioning files
+# This playbook creates necessary directories and files for Grafana dashboards and datasources.
+- name: Create example dashboard file
+  copy:
+    dest: /opt/ansible-lab-env/grafana/dashboards/demo_dashboard.json
+    content: |
+      {
+        "__inputs": [],
+        "title": "Demo Dashboard",
+        "panels": [],
+        "schemaVersion": 16,
+        "version": 0
+      }
+
+- name: Create dashboard provisioning config
+  copy:
+    dest: /opt/ansible-lab-env/grafana/provisioning/dashboards/dashboard.yml
+    content: |
+      apiVersion: 1
+      providers:
+        - name: 'default'
+          orgId: 1
+          folder: ''
+          type: file
+          options:
+            path: /var/lib/grafana/dashboards
+            foldersFromFilesStructure: false
+
+- name: Create Prometheus datasource config
+  copy:
+    dest: /opt/ansible-lab-env/grafana/provisioning/datasources/datasource_prometheus.yml
+    content: |
+      apiVersion: 1
+      datasources:
+        - name: Prometheus
+          type: prometheus
+          access: proxy
+          url: https://yourdomain.example/prometheus
+          isDefault: true
+
+- name: Copy VPS Health Grafana dashboard JSON
+  copy:
+    dest: /opt/ansible-lab-env/grafana/dashboards/vps-health.json
+    content: |
+      {% raw %}
+      {
+        "id": null,
+        "uid": "vps-health",
+        "title": "VPS Health",
+        "schemaVersion": 36,
+        "version": 1,
+        "refresh": "10s",
+        "time": {
+          "from": "now-5m",
+          "to": "now"
+        },
+        "panels": [
+          {
+            "type": "gauge",
+            "title": "CPU Usage %",
+            "datasource": "Prometheus",
+            "targets": [
+              {
+                "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+                "legendFormat": "CPU Usage",
+                "interval": ""
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "percent"
+              }
+            },
+            "gridPos": { "x": 0, "y": 0, "w": 6, "h": 5 }
+          },
+          {
+            "type": "gauge",
+            "title": "Memory Usage %",
+            "datasource": "Prometheus",
+            "targets": [
+              {
+                "expr": "(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100",
+                "legendFormat": "Memory Usage",
+                "interval": ""
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "percent"
+              }
+            },
+            "gridPos": { "x": 6, "y": 0, "w": 6, "h": 5 }
+          },
+          {
+            "type": "gauge",
+            "title": "Disk Usage %",
+            "datasource": "Prometheus",
+            "targets": [
+              {
+                "expr": "(1 - (node_filesystem_avail_bytes{mountpoint=\"/\"} / node_filesystem_size_bytes{mountpoint=\"/\"})) * 100",
+                "legendFormat": "Disk Usage",
+                "interval": ""
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "percent"
+              }
+            },
+            "gridPos": { "x": 0, "y": 5, "w": 6, "h": 5 }
+          },
+          {
+            "type": "graph",
+            "title": "Network In/Out (eth0)",
+            "datasource": "Prometheus",
+            "targets": [
+              {
+                "expr": "rate(node_network_receive_bytes_total{device=\"eth0\"}[5m])",
+                "legendFormat": "In",
+                "interval": ""
+              },
+              {
+                "expr": "rate(node_network_transmit_bytes_total{device=\"eth0\"}[5m])",
+                "legendFormat": "Out",
+                "interval": ""
+              }
+            ],
+            "yaxes": [
+              {
+                "format": "Bps",
+                "label": "in/out",
+                "logBase": 1,
+                "min": null,
+                "max": null
+              },
+              {
+                "format": "short",
+                "logBase": 1,
+                "min": null,
+                "max": null
+              }
+            ],
+            "gridPos": { "x": 6, "y": 5, "w": 6, "h": 5 }
+          }
+        ]
+      }
+      {% endraw %}
+
+- name: Copy cAdvisor Grafana dashboard JSON
+  copy:
+    dest: /opt/ansible-lab-env/grafana/dashboards/cadvisor.json
+    content: |
+      {% raw %}
+      {
+        "id": null,
+        "uid": "cadvisor-dashboard",
+        "title": "cAdvisor Container Metrics",
+        "tags": ["cadvisor", "docker"],
+        "timezone": "browser",
+        "schemaVersion": 36,
+        "version": 1,
+        "refresh": "30s",
+        "time": {
+          "from": "now-1h",
+          "to": "now"
+        },
+        "templating": {
+          "list": [
+            {
+              "name": "host",
+              "type": "query",
+              "datasource": "Prometheus",
+              "query": "label_values(cadvisor_version_info, instance)",
+              "refresh": 1,
+              "includeAll": true,
+              "multi": false,
+              "sort": 1,
+              "current": {
+                "selected": false,
+                "text": "All",
+                "value": "$__all"
+              }
+            },
+            {
+              "name": "container",
+              "type": "query",
+              "datasource": "Prometheus",
+              "query": "label_values(container_cpu_usage_seconds_total, name)",
+              "refresh": 1,
+              "includeAll": true,
+              "multi": false,
+              "sort": 1,
+              "current": {
+                "selected": false,
+                "text": "All",
+                "value": "$__all"
+              }
+            }
+          ]
+        },
+        "panels": [
+          {
+            "type": "gauge",
+            "title": "CPU Usage %",
+            "datasource": "Prometheus",
+            "targets": [
+              {
+                "expr": "sum(rate(container_cpu_usage_seconds_total{instance=~\"$host\",name=~\"$container\"}[5m])) by (name) * 100",
+                "legendFormat": "{{name}}"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "percent"
+              }
+            },
+            "gridPos": { "x": 0, "y": 0, "w": 6, "h": 5 }
+          },
+          {
+            "type": "gauge",
+            "title": "Memory Usage (MB)",
+            "datasource": "Prometheus",
+            "targets": [
+              {
+                "expr": "sum(container_memory_usage_bytes{instance=~\"$host\",name=~\"$container\"}) by (name) / 1024 / 1024",
+                "legendFormat": "{{name}}"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "decbytes"
+              }
+            },
+            "gridPos": { "x": 6, "y": 0, "w": 6, "h": 5 }
+          },
+          {
+            "type": "graph",
+            "title": "Network In/Out (Bytes/sec)",
+            "datasource": "Prometheus",
+            "targets": [
+              {
+                "expr": "sum(rate(container_network_receive_bytes_total{instance=~\"$host\",name=~\"$container\"}[5m])) by (name)",
+                "legendFormat": "{{name}} In"
+              },
+              {
+                "expr": "sum(rate(container_network_transmit_bytes_total{instance=~\"$host\",name=~\"$container\"}[5m])) by (name)",
+                "legendFormat": "{{name}} Out"
+              }
+            ],
+            "yaxes": [
+              { "format": "Bps", "label": "Bytes/sec" },
+              { "format": "short" }
+            ],
+            "gridPos": { "x": 0, "y": 5, "w": 12, "h": 5 }
+          }
+        ]
+      }
+      {% endraw %}

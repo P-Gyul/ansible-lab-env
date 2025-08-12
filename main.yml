@@ -1,0 +1,24 @@
+---
+# Playbook: Install and configure applications on client
+# This playbook installs UFW, Docker, creates the Docker Compose file, creates directories and sets up Grafana dashboards and configurations.
+- name: Install all applications
+  hosts: client # Or specific host name in your inventory
+  become: true
+  tasks:
+    - name: include install_ufw tasks
+      include_tasks: install_ufw.yml
+
+    - name: Include install_docker tasks
+      include_tasks: install_docker.yml
+
+    - name: Include create_configurations tasks
+      include_tasks: create_configurations.yml
+
+    - name: Include create_project_directories tasks
+      include_tasks: create_project_directories.yml
+
+    - name: Include set_up_grafana_dashboard.yml
+      include_tasks: set_up_grafana_dashboard.yml
+
+    - name: Include install_docker_allfiles tasks
+      include_tasks: install_docker_allfiles.yml

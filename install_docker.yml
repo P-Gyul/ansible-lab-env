@@ -1,0 +1,79 @@
+---
+- name: Install required apt packages
+  apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+    state: present
+    update_cache: yes
+#docker GPG source authentication
+- name: Add Docker GPG key
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+#where to get docker
+- name: Add Docker repository
+  apt_repository:
+    repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable
+    state: present
+
+- name: Install Docker
+  apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-compose-plugin
+    state: latest
+    update_cache: yes
+#ansible user gets docker group right
+- name: Add ansible user to docker group
+  user:
+    name: ansible
+    groups: docker
+    append: yes
+#Docker starts to use journald logging driver
+#This configuration sets Docker to use the journald logging driver, which integrates Docker logs with the systemd journal.
+- name: Configure Docker to use journald logging driver
+  copy:
+    dest: /etc/docker/daemon.json
+    content: |
+      {
+        "log-driver": "journald"
+      }
+    owner: root
+    group: root
+    mode: "0644"
+
+#config log rotation
+#journald log rotation settings
+#SystemMaxUse: Maximum disk space that the journal may use at any time.
+#SystemKeepFree: Amount of disk space that shall be kept free for other uses.
+#SystemMaxFileSize: Maximum size of individual journal files.
+#SystemMaxFiles: Maximum number of individual journal files to retain.
+#These settings help to manage disk space and ensure that the journal does not consume all available disk space.
+- name: Configure journald log rotation
+  lineinfile:
+    path: /etc/systemd/journald.conf
+    regexp: "^{{ item.key }}="
+    line: "{{ item.key }}={{ item.value }}"
+    create: yes
+  loop:
+    - { key: "SystemMaxUse", value: "500M" }
+    - { key: "SystemKeepFree", value: "100M" }
+    - { key: "SystemMaxFileSize", value: "50M" }
+    - { key: "SystemMaxFiles", value: "10" }
+
+- name: Restart systemd-journald to apply config
+  systemd:
+    name: systemd-journald
+    state: restarted
+# Ensure Docker service is enabled and started
+- name: Enable and start Docker service
+  service:
+    name: docker
+    enabled: yes
+    state: started
