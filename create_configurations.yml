@@ -2,6 +2,7 @@
 # Playbook: Install and configure Authelia and Prometheus for ansible-lab-env
 # Note: This is a sanitized public version.
 # Replace placeholder values with your own secure data before use.
+# After replacing placeholders please remove comments within | content
 
 - name: Create Authelia configuration.yml
   copy:
@@ -120,3 +121,4 @@
         - job_name: 'authelia'
           static_configs:
             - targets: ['authelia:9959']
+
