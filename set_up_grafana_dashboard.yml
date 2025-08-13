@@ -36,7 +36,7 @@
         - name: Prometheus
           type: prometheus
           access: proxy
-          url: https://yourdomain.example/prometheus
+          url: http://prometheus:9090/prometheus
           isDefault: true
 
 - name: Copy VPS Health Grafana dashboard JSON

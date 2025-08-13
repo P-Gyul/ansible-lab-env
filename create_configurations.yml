@@ -19,7 +19,7 @@
 
       session:
         name: authelia_session
-        # REPLACE with your own secure random secret (minimum 32 characters)
+        # REPLACE "secret" with your own encryption key (32 bytes base64)
         secret: "REPLACE_WITH_YOUR_SECRET_SESSION_KEY"
         expiration: 1h
         inactivity: 5m
@@ -60,19 +60,11 @@
 
           - domain: example.com
             resources:
-              - "^/prometheus.*$"
-            # Replace with your private docker network subnet(s)
-            networks:
-              - 172.21.0.0/16
-            policy: bypass
-
-          - domain: example.com
-            resources:
               - "^/.*$"
             policy: one_factor
 
       storage:
-        # REPLACE with your own encryption key (32 bytes base64)
+        # REPLACE "encryption_key" with your own encryption key (32 bytes base64)
         encryption_key: "REPLACE_WITH_BASE64_ENCRYPTION_KEY"
         local:
           path: /config/db.sqlite3
@@ -83,7 +75,7 @@
 
 - name: Create Authelia users_database.yml
   copy:
-    dest: /opt/gymproject/authelia/users_database.yml
+    dest: /opt/ansible-lab-env/authelia/users_database.yml
     mode: "0644"
     content: |
       users:
@@ -105,7 +97,7 @@
 
 - name: Copy Prometheus config
   copy:
-    dest: /opt/gymproject/prometheus.yml
+    dest: /opt/ansible-lab-env/prometheus.yml
     mode: "0644"
     content: |
       global:
@@ -113,20 +105,18 @@
 
       scrape_configs:
         - job_name: 'prometheus'
+          metrics_path: /prometheus/metrics
           static_configs:
             - targets: ['localhost:9090']
 
         - job_name: 'vpsnodeexporter'
           static_configs:
-            # Replace with your actual node exporter IP or hostname
-            - targets: ['YOUR_NODE_EXPORTER_IP:9100']
+            - targets: ['vpsnodeexporter:9100']
 
         - job_name: 'dockerscrapercadvisor'
           static_configs:
-            # Replace with your Docker cAdvisor container hostname or IP
             - targets: ['dockerscrapercadvisor:8080']
                
         - job_name: 'authelia'
           static_configs:
-            # Hostname or service name for Authelia metrics scraping
             - targets: ['authelia:9959']

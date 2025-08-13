@@ -37,6 +37,7 @@
             - ./letsencrypt:/letsencrypt
           networks:
             - traefik_net
+            - monitoring_net
           labels:
             - "traefik.enable=true"
             - "traefik.http.routers.traefik.rule=Host(`yourdomain.example`) && (PathPrefix(`/dashboard`) || PathPrefix(`/api`))"
@@ -94,6 +95,7 @@
             - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
           networks:
             - traefik_net
+            - monitoring_net
           labels:
             - "traefik.enable=true"
             - "traefik.http.routers.prometheus.rule=Host(`yourdomain.example`) && PathPrefix(`/prometheus`)"
@@ -117,13 +119,15 @@
             - GF_AUTH_PROXY_HEADER_PROPERTY=username
             - GF_AUTH_PROXY_AUTO_SIGN_UP=true
             # Adjust whitelist IPs/networks as needed
-            - GF_AUTH_PROXY_WHITELIST=127.0.0.1,::1,172.21.0.0/16
+            - GF_AUTH_PROXY_WHITELIST=127.0.0.1,::1,172.21.0.0/16,172.22.0.0/16
           volumes:
             - /var/lib/grafana:/var/lib/grafana
-            - ./grafana/dashboards:/var/lib/grafana/dashboards
-            - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+            - /opt/ansible-lab-env/grafana/dashboards:/var/lib/grafana/dashboards
+            - /opt/ansible-lab-env/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+            - /opt/ansible-lab-env/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
           networks:
             - traefik_net
+            - monitoring_net
           labels:
             - "traefik.enable=true"
             - "traefik.http.routers.grafana.rule=Host(`yourdomain.example`) && PathPrefix(`/grafana`)"
@@ -137,7 +141,6 @@
           image: prom/node-exporter:latest
           container_name: vpsnodeexporter
           restart: unless-stopped
-          network_mode: host
           pid: "host"
           volumes:
             - /proc:/host/proc:ro
@@ -147,6 +150,8 @@
             - '--path.procfs=/host/proc'
             - '--path.sysfs=/host/sys'
             - '--path.rootfs=/rootfs'
+          networks:
+            - monitoring_net
           labels:
             - "traefik.enable=false"
 
@@ -160,7 +165,7 @@
             - /sys:/sys:ro
             - /var/lib/docker/:/var/lib/docker:ro
           networks:
-            - traefik_net
+            - monitoring_net
           labels:
             - "traefik.enable=false"
 
@@ -170,6 +175,11 @@
           ipam:
             config:
               - subnet: 172.21.0.0/16
+       monitoring_net:
+          driver: bridge
+          ipam:
+            config:
+              - subnet: 172.22.0.0/16
 
 - name: Bring down any previously running Compose stack
   shell: docker compose down
