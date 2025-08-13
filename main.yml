@@ -6,19 +6,19 @@
   become: true
   tasks:
     - name: include install_ufw tasks
-      include_tasks: install_ufw.yml
+      include_tasks: playbooks/install_ufw.yml
 
     - name: Include install_docker tasks
-      include_tasks: install_docker.yml
+      include_tasks: playbooks/install_docker.yml
 
     - name: Include create_configurations tasks
-      include_tasks: create_configurations.yml
+      include_tasks: playbooks/create_configurations.yml
 
     - name: Include create_project_directories tasks
-      include_tasks: create_project_directories.yml
+      include_tasks: playbooks/create_project_directories.yml
 
     - name: Include set_up_grafana_dashboard.yml
-      include_tasks: set_up_grafana_dashboard.yml
+      include_tasks: playbooks/set_up_grafana_dashboard.yml
 
     - name: Include install_docker_allfiles tasks
-      include_tasks: install_docker_allfiles.yml
+      include_tasks: playbooks/install_docker_allfiles.yml
