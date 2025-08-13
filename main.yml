@@ -11,11 +11,11 @@
     - name: Include install_docker tasks
       include_tasks: playbooks/install_docker.yml
 
-    - name: Include create_configurations tasks
-      include_tasks: playbooks/create_configurations.yml
-
     - name: Include create_project_directories tasks
       include_tasks: playbooks/create_project_directories.yml
+
+    - name: Include create_configurations tasks
+      include_tasks: playbooks/create_configurations.yml
 
     - name: Include set_up_grafana_dashboard.yml
       include_tasks: playbooks/set_up_grafana_dashboard.yml
