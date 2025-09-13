@@ -9,7 +9,7 @@ ansible_ssh_common_args: "-o StrictHostKeyChecking=no"
 
 #project domain vars
 project_domain: "YOUR_DOMAIN"
-hhtps_acme_mail: "YOUR_ACME_MAIL"
+https_acme_mail: "YOUR_ACME_MAIL"
 
 #authelia vars
 authelia_session_secret: "YOUR_SECRET_SESSION_KEY (32 bytes base64)"
@@ -31,3 +31,4 @@ authelia_users_raw:
     displayname: "YOUR_USER"
     password: "YOUR_PASSWORD"
     groups: ["YOUR_GROUP"]
+
