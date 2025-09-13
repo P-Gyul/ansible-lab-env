@@ -1,0 +1,35 @@
+---
+# Playbook: Install and configure applications on client
+# This playbook installs UFW, Docker, creates the Docker Compose file, creates directories and sets up Grafana dashboards and configurations.
+- name: Install all applications
+  hosts: client # Or specific host name in your inventory
+  vars_files:
+    - group_vars/client.yml
+  become: true
+  become_method: sudo
+
+  tasks:
+    - name: Update and upgrade apt packages
+      apt:
+        update_cache: yes
+
+    - name: include install_ufw tasks
+      include_tasks: playbooks/install_ufw.yml
+
+    - name: Include install_docker tasks
+      include_tasks: playbooks/install_docker.yml
+
+    - name: Include create_project_directories tasks
+      include_tasks: playbooks/create_project_directories.yml
+
+    - name: Include create_authelia_configuration tasks
+      include_tasks: playbooks/create_authelia_configuration.yml
+
+    - name: Include create_prometheus_config tasks
+      include_tasks: playbooks/create_prometheus_config.yml
+
+    - name: Include set_up_grafana_dashboard.yml
+      include_tasks: playbooks/set_up_grafana_dashboard.yml
+
+    - name: Include install_docker_allfiles tasks
+      include_tasks: playbooks/install_docker_allfiles.yml

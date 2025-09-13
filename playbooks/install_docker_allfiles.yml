@@ -1,0 +1,197 @@
+---
+# Playbook: Setup Docker Compose stack with Traefik, Grafana, Prometheus, etc.
+# Public version - fill out the client.yml var file
+# Note: This playbook assumes you have already created necessary directories and files.
+
+
+- name: Copy docker-compose.yml for Traefik, Grafana, Prometheus, etc
+  copy:
+    dest: /opt/ansible-lab-env/docker-compose.yml
+    content: |
+      services:
+        reverse-proxy:
+          image: traefik:latest
+          container_name: traefik
+          command:
+            - --api.dashboard=true
+            - --api.debug=true
+            - --log.level=DEBUG
+            - --providers.docker=true
+            - --providers.docker.exposedbydefault=false
+            - --entryPoints.web.address=:80
+            - --entryPoints.websecure.address=:443
+            - --certificatesResolvers.letsencrypt.acme.email={{ hhtps_acme_mail }}
+            - --certificatesResolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
+            - --certificatesResolvers.letsencrypt.acme.httpChallenge.entryPoint=web
+            - --entrypoints.web.http.redirections.entrypoint.to=websecure
+            - --entryPoints.web.http.redirections.entrypoint.scheme=https
+            - --metrics.prometheus=true
+            - --metrics.prometheus.entryPoint=metrics
+            - --metrics.prometheus.buckets=0.1,0.3,1.2,5.0
+            - --metrics.prometheus.addEntryPointsLabels=true
+            - --metrics.prometheus.addServicesLabels=true
+            - --entryPoints.metrics.address=:9100
+
+          ports:
+            - "80:80"
+            - "443:443"
+          volumes:
+            - /var/run/docker.sock:/var/run/docker.sock
+            - ./letsencrypt:/letsencrypt
+          networks:
+            - traefik_net
+            - monitoring_net
+          labels:
+            - "traefik.enable=true"
+            - "traefik.http.routers.traefik.rule=Host(`{{ project_domain }}`) && (PathPrefix(`/dashboard`) || PathPrefix(`/api`))"
+            - "traefik.http.routers.traefik.entrypoints=websecure"
+            - "traefik.http.routers.traefik.tls=true"
+            - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+            - "traefik.http.routers.traefik.service=api@internal"
+            - "traefik.http.middlewares.authelia-auth.forwardauth.address=http://authelia:9091/api/verify?rd=https://{{ project_domain }}/sso"
+            - "traefik.http.middlewares.authelia-auth.forwardauth.trustForwardHeader=true"
+            - "traefik.http.middlewares.authelia-auth.forwardauth.authResponseHeaders=Remote-User,Remote-Groups,Remote-Name,Remote-Email"
+            - "traefik.http.routers.traefik.middlewares=authelia-auth"
+
+        authelia:
+          image: authelia/authelia:latest
+          container_name: authelia
+          volumes:
+            - /opt/ansible-lab-env/authelia:/config
+          environment:
+            - TZ=Europe/Budapest
+          networks:
+            - traefik_net
+          labels:
+            - "traefik.enable=true"
+            - "traefik.http.routers.authelia.rule=Host(`{{ project_domain }}`) && PathPrefix(`/sso`)"
+            - "traefik.http.routers.authelia.entrypoints=websecure"
+            - "traefik.http.routers.authelia.tls=true"
+            - "traefik.http.routers.authelia.tls.certresolver=letsencrypt"
+            - "traefik.http.services.authelia.loadbalancer.server.port=9091"
+            - "traefik.http.routers.authelia.service=authelia" 
+
+        whoami:
+          image: "traefik/whoami"
+          container_name: "simple-service"
+          labels:
+            - "traefik.enable=true"
+            - "traefik.http.routers.whoami.rule=Host(`{{ project_domain }}`) && PathPrefix(`/whoami`)"
+            - "traefik.http.routers.whoami.entrypoints=websecure"
+            - "traefik.http.routers.whoami.tls=true"
+            - "traefik.http.routers.whoami.tls.certresolver=letsencrypt"
+            - "traefik.http.routers.whoami.middlewares=authelia-auth"
+            - "traefik.http.services.whoami.loadbalancer.server.port=80"
+          networks:
+            - traefik_net
+
+        prometheus:
+          image: prom/prometheus:latest
+          container_name: prometheus
+          user: "472"
+          command:
+            - --config.file=/etc/prometheus/prometheus.yml
+            - --web.external-url=https://{{ project_domain }}/prometheus
+            - --web.route-prefix=/prometheus
+          volumes:
+            - /var/lib/prometheus:/prometheus
+            - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+          networks:
+            - traefik_net
+            - monitoring_net
+          labels:
+            - "traefik.enable=true"
+            - "traefik.http.routers.prometheus.rule=Host(`{{ project_domain }}`) && PathPrefix(`/prometheus`)"
+            - "traefik.http.routers.prometheus.entrypoints=websecure"
+            - "traefik.http.routers.prometheus.tls=true"
+            - "traefik.http.routers.prometheus.tls.certresolver=letsencrypt"
+            - "traefik.http.routers.prometheus.middlewares=authelia-auth"
+            - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
+
+        grafana:
+          image: grafana/grafana:latest
+          container_name: grafana
+          user: "472"
+          environment:
+            - GF_SERVER_ROOT_URL=https://{{ project_domain }}/grafana/
+            - GF_LOG_LEVEL=debug
+            - GF_SERVER_SERVE_FROM_SUB_PATH=true
+            - GF_AUTH_DISABLE_LOGIN_FORM=true
+            - GF_AUTH_PROXY_ENABLED=true
+            - GF_AUTH_PROXY_HEADER_NAME=Remote-User
+            - GF_AUTH_PROXY_HEADER_PROPERTY=username
+            - GF_AUTH_PROXY_AUTO_SIGN_UP=true
+            - GF_AUTH_PROXY_WHITELIST=127.0.0.1,::1,172.21.0.0/16,172.22.0.0/16
+            - GF_AUTH_PROXY_HEADER_X_ROLE=Remote-Groups
+            - GF_AUTH_PROXY_ROLE_ATTRIBUTE_PATH=contains(groups, 'admins') && 'Admin' || 'Viewer'
+          volumes:
+            - /var/lib/grafana:/var/lib/grafana
+            - /opt/ansible-lab-env/grafana/dashboards:/var/lib/grafana/dashboards
+            - /opt/ansible-lab-env/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+            - /opt/ansible-lab-env/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+          networks:
+            - traefik_net
+            - monitoring_net
+          labels:
+            - "traefik.enable=true"
+            - "traefik.http.routers.grafana.rule=Host(`{{ project_domain }}`) && PathPrefix(`/grafana`)"
+            - "traefik.http.routers.grafana.entrypoints=websecure"
+            - "traefik.http.routers.grafana.tls=true"
+            - "traefik.http.routers.grafana.tls.certresolver=letsencrypt"
+            - "traefik.http.routers.grafana.middlewares=authelia-auth"
+            - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+
+        vpsnodeexporter:
+          image: prom/node-exporter:latest
+          container_name: vpsnodeexporter
+          restart: unless-stopped
+          pid: "host"
+          volumes:
+            - /proc:/host/proc:ro
+            - /sys:/host/sys:ro
+            - /:/rootfs:ro
+          command:
+            - '--path.procfs=/host/proc'
+            - '--path.sysfs=/host/sys'
+            - '--path.rootfs=/rootfs'
+          networks:
+            - monitoring_net
+          labels:
+            - "traefik.enable=false"
+       
+        dockerscrapercadvisor:
+          image: gcr.io/cadvisor/cadvisor:latest
+          container_name: dockerscrapercadvisor
+          restart: unless-stopped
+          volumes:
+            - /:/rootfs:ro
+            - /var/run:/var/run:rw
+            - /sys:/sys:ro
+            - /var/lib/docker/:/var/lib/docker:ro
+          networks:
+            - monitoring_net
+          labels:
+            - "traefik.enable=false"
+
+      networks:
+        traefik_net:
+          driver: bridge
+          ipam:
+            config:
+              - subnet: 172.21.0.0/16
+        monitoring_net:
+          driver: bridge
+          ipam:
+            config:
+              - subnet: 172.22.0.0/16
+
+- name: Bring down any previously running Compose
+  shell: docker compose down
+  args:
+    chdir: /opt/ansible-lab-env
+
+- name: Bring up the stack with Docker Compose
+  shell: docker compose up -d
+  args:
+    chdir: /opt/ansible-lab-env
+

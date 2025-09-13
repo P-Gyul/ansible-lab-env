@@ -1,0 +1,10 @@
+users:
+{% for u in hashed_users %}
+  {{ u.username }}:
+    password: {{ u.password }}
+    displayname: "{{ u.displayname }}"
+    groups:
+{% for g in u.groups %}
+      - {{ g }}
+{% endfor %}
+{% endfor %}

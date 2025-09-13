@@ -1,0 +1,41 @@
+---
+- name: Create directory for Authelia configs
+  file:
+    path: /opt/ansible-lab-env/authelia
+    state: directory
+    mode: "0755"
+
+- name: Create directory for Docker Compose project
+  file:
+    path: /opt/ansible-lab-env
+    state: directory
+    mode: "0755"
+
+- name: Create persistent data directories for Prometheus and Grafana
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: 472
+    group: 472
+    mode: "0755"
+  loop:
+    - /var/lib/prometheus
+    - /var/lib/grafana
+
+- name: Create Grafana dashboard directory
+  file:
+    path: /opt/ansible-lab-env/grafana/dashboards
+    state: directory
+    mode: "0755"
+
+- name: Create Grafana provisioning dashboards directory
+  file:
+    path: /opt/ansible-lab-env/grafana/provisioning/dashboards
+    state: directory
+    mode: "0755"
+
+- name: Create Grafana provisioning datasources directory
+  file:
+    path: /opt/ansible-lab-env/grafana/provisioning/datasources
+    state: directory
+    mode: "0755"

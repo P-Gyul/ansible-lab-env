@@ -1,0 +1,51 @@
+---
+# Playbook: Set up Grafana dashboard and provisioning files
+# This playbook creates necessary directories and files for Grafana dashboards and datasources.
+
+- name: Create dashboard provisioning config
+  copy:
+    dest: /opt/ansible-lab-env/grafana/provisioning/dashboards/dashboard.yml
+    content: |
+      apiVersion: 1
+      providers:
+        - name: 'default'
+          orgId: 1
+          folder: ''
+          type: file
+          options:
+            path: /var/lib/grafana/dashboards
+            foldersFromFilesStructure: false
+
+- name: Create Prometheus datasource config
+  copy:
+    dest: /opt/ansible-lab-env/grafana/provisioning/datasources/datasource_prometheus.yml
+    content: |
+      apiVersion: 1
+      datasources:
+        - name: Prometheus
+          type: prometheus
+          access: proxy
+          url: http://prometheus:9090/prometheus
+          isDefault: true
+
+- name: Download Node Exporter Full dashboard
+  get_url:
+    url: https://grafana.com/api/dashboards/1860/revisions/41/download
+    dest: /opt/ansible-lab-env/grafana/dashboards/node_exporter_full.json
+
+- name: Download Docker monitoring with node selection dashboard
+  get_url:
+    url: https://grafana.com/api/dashboards/19792/revisions/6/download
+    dest: /opt/ansible-lab-env/grafana/dashboards/cadvisor_docker_monitoring_2025.json
+
+- name: Download Prometheus 2.22 Overview dashboard
+  get_url:
+    url: https://grafana.com/api/dashboards/18618/revisions/1/download
+    dest: /opt/ansible-lab-env/grafana/dashboards/prometheus_2.22_overview.json
+
+- name: Download Traefik dashboard
+  get_url:
+    url: https://grafana.com/api/dashboards/17346/revisions/9/download
+    dest: /opt/ansible-lab-env/grafana/dashboards/traefik_dashboard.json
+
+

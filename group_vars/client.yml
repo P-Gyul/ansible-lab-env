@@ -1,0 +1,33 @@
+# Keep this file in github secret or use ansible vault for safety
+
+#inventory variables for client server
+ansible_user: "YOUR_SSH_USER"
+ansible_ssh_pass: "YOUR_SSH_PASS"
+ansible_become_pass: "YOUR_SUDO_PASS"
+ansible_port: "YOUR_SSH_PORT"
+ansible_ssh_common_args: "-o StrictHostKeyChecking=no"
+
+#project domain vars
+project_domain: "YOUR_DOMAIN"
+hhtps_acme_mail: "YOUR_ACME_MAIL"
+
+#authelia vars
+authelia_session_secret: "YOUR_SECRET_SESSION_KEY (32 bytes base64)"
+authelia_storage_encryption_key: "YOUR_STORAGE_ENCRYPTION_KEY (32 bytes base64)"
+
+#authelia users: fill out with
+authelia_users_raw:
+  - username: admin
+    displayname: "Administrator"
+    password: "admin"
+    groups: ["admins"]
+
+  - username: "YOUR_USER"
+    displayname: "YOUR_USER"
+    password: "YOUR_PASSWORD"
+    groups: ["YOUR_GROUP"]
+
+  - username: user1
+    displayname: "YOUR_USER"
+    password: "YOUR_PASSWORD"
+    groups: ["YOUR_GROUP"]
