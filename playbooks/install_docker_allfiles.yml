@@ -20,7 +20,7 @@
             - --providers.docker.exposedbydefault=false
             - --entryPoints.web.address=:80
             - --entryPoints.websecure.address=:443
-            - --certificatesResolvers.letsencrypt.acme.email={{ hhtps_acme_mail }}
+            - --certificatesResolvers.letsencrypt.acme.email={{ https_acme_mail }}
             - --certificatesResolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
             - --certificatesResolvers.letsencrypt.acme.httpChallenge.entryPoint=web
             - --entrypoints.web.http.redirections.entrypoint.to=websecure
@@ -194,4 +194,5 @@
   shell: docker compose up -d
   args:
     chdir: /opt/ansible-lab-env
+
 
