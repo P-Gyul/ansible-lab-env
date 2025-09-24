@@ -22,14 +22,20 @@
     - name: Include create_project_directories tasks
       include_tasks: playbooks/create_project_directories.yml
 
-    - name: Include create_authelia_configuration tasks
-      include_tasks: playbooks/create_authelia_configuration.yml
+    - name: Include create_authelia_config tasks
+      include_tasks: playbooks/create_authelia_config.yml
 
     - name: Include create_prometheus_config tasks
       include_tasks: playbooks/create_prometheus_config.yml
 
-    - name: Include set_up_grafana_dashboard.yml
-      include_tasks: playbooks/set_up_grafana_dashboard.yml
+    - name: Include create_loki_config tasks
+      include_tasks: playbooks/create_loki_config.yml
+
+    - name: Include create_promtail_config tasks
+      include_tasks: playbooks/create_promtail_config.yml
+
+    - name: Include create_grafana_config.yml
+      include_tasks: playbooks/create_grafana.config.yml
 
     - name: Include install_docker_allfiles tasks
       include_tasks: playbooks/install_docker_allfiles.yml
