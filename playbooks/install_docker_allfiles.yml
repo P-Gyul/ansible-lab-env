@@ -1,8 +1,8 @@
 ---
 # Playbook: Setup Docker Compose stack with Traefik, Grafana, Prometheus, etc.
-# Public version - fill out the client.yml var file
+# Public version - replace placeholders and adjust paths/domains before use.
 # Note: This playbook assumes you have already created necessary directories and files.
-
+# yourdomain.example should be replaced with your actual domain.
 
 - name: Copy docker-compose.yml for Traefik, Grafana, Prometheus, etc
   copy:
@@ -20,7 +20,7 @@
             - --providers.docker.exposedbydefault=false
             - --entryPoints.web.address=:80
             - --entryPoints.websecure.address=:443
-            - --certificatesResolvers.letsencrypt.acme.email={{ https_acme_mail }}
+            - --certificatesResolvers.letsencrypt.acme.email={{ hhtps_acme_mail }}
             - --certificatesResolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
             - --certificatesResolvers.letsencrypt.acme.httpChallenge.entryPoint=web
             - --entrypoints.web.http.redirections.entrypoint.to=websecure
@@ -31,7 +31,6 @@
             - --metrics.prometheus.addEntryPointsLabels=true
             - --metrics.prometheus.addServicesLabels=true
             - --entryPoints.metrics.address=:9100
-
           ports:
             - "80:80"
             - "443:443"
@@ -95,7 +94,7 @@
             - --web.route-prefix=/prometheus
           volumes:
             - /var/lib/prometheus:/prometheus
-            - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+            - /opt/ansible-lab-env/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
           networks:
             - traefik_net
             - monitoring_net
@@ -140,6 +139,35 @@
             - "traefik.http.routers.grafana.tls.certresolver=letsencrypt"
             - "traefik.http.routers.grafana.middlewares=authelia-auth"
             - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+            
+        loki:
+          image: grafana/loki:latest
+          container_name: loki
+          restart: unless-stopped
+          command: -config.file=/etc/loki/local-config.yaml
+          volumes:
+            - /var/lib/loki:/loki
+            - /opt/ansible-lab-env/loki/loki-config.yml:/etc/loki/local-config.yaml:ro
+          networks:
+            - monitoring_net
+          labels:
+            - "traefik.enable=false"
+
+        promtail:
+          image: grafana/promtail:latest
+          container_name: promtail
+          restart: unless-stopped
+          command: -config.file=/opt/promtail/config.yml
+          volumes:
+            - /var/lib/promtail:/var/lib/promtail
+            - /opt/ansible-lab-env/promtail/promtail-config.yml:/opt/promtail/config.yml:ro
+            - /var/log:/var/log:ro
+            - /run/log/journal:/run/log/journal:ro
+            - /etc/machine-id:/etc/machine-id:ro
+          networks:
+            - monitoring_net
+          labels:
+            - "traefik.enable=false"    
 
         vpsnodeexporter:
           image: prom/node-exporter:latest
@@ -194,5 +222,3 @@
   shell: docker compose up -d
   args:
     chdir: /opt/ansible-lab-env
-
-

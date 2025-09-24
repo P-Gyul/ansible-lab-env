@@ -1,0 +1,64 @@
+---
+- name: Create Promtail config
+  copy:
+    dest: /opt/ansible-lab-env/promtail/promtail-config.yml
+    content: |
+      server:
+        http_listen_port: 9080
+        grpc_listen_port: 0
+
+      positions:
+        filename: /var/lib/promtail/positions.yaml
+
+      clients:
+        - url: http://loki:3100/loki/api/v1/push
+
+      scrape_configs:
+
+      - job_name: syslogs
+        static_configs:
+          - targets: [localhost]
+            labels:
+              instance: localhost
+              job: syslogs
+              __path__: /var/log/syslog
+
+      - job_name: auth
+        static_configs:
+          - targets: [localhost]
+            labels:
+              instance: localhost
+              job: auth
+              __path__: /var/log/auth.log
+
+      - job_name: varlogs
+        static_configs:
+          - targets: [localhost]
+            labels:
+              instance: localhost
+              job: varlogs
+              __path__: /var/log/*.log
+
+      - job_name: journald
+        journal:
+          max_age: 12h
+          labels:
+            env: home-lab
+            job: journald
+            instance: journald
+        relabel_configs:
+          - source_labels: ['__journal__systemd_unit']
+            regex: 'systemd-journald.service'
+            target_label: unit
+          - target_label: job
+            replacement: journald
+          - source_labels: ['CONTAINER_NAME']
+            regex: '.+'
+            target_label: container
+            action: replace
+          - source_labels: ['CONTAINER_ID_FULL']
+            target_label: container_id
+            action: replace
+          - source_labels: ['IMAGE_NAME']
+            target_label: image_name
+            action: replace

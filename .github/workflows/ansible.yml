@@ -1,0 +1,32 @@
+name: CI/CD with Ansible
+
+on:
+  push:
+    branches:
+      - main # Run only on main branch merges/pushes
+
+    # renove the comments from below to enable workflow
+    #jobs:
+    #  deploy:
+    runs-on: ubuntu-latest
+    #Runs a docker image that has ansible already installed
+    container:
+      image: alpine/ansible:latest
+
+    steps:
+      # Step 1: Checkout repo
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Step 3: Configure SSH
+      # - name: Add SSH key
+      #  uses: webfactory/ssh-agent@v0.9.0
+      # with:
+      #  ssh-private-key: ${{ secrets.ANSIBLE_SSH_KEY }}
+
+      #- name: Write vault password
+      # run: echo "${{ secrets.VAULT_PASS }}" > .vault_pass.txt
+
+      # Step 4: Run playbook
+      - name: Run Ansible playbook
+        run: ansible-playbook -i inventory/inventory.ini main.yml
